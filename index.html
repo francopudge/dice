@@ -227,7 +227,9 @@ function render(){
   <div class="player ${!p.alive?'dead':''}">
     <img src="${p.img}" style="width:120px;"><br>
     ❤️ HP: ${p.hp}<br>
-    🎯 Counter: ${p.counter}<br>
+   <img src="logo.png" style="width:30px; vertical-align:middle;">
+<span>${p.counter}</span><br>
+
 
     ${i!==turn && p.alive && dice>0 && !attacked
       ? `<button onclick="attack(${i})">Attack</button>`:""}
