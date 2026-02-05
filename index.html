@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Dice War</title>
+
+<!-- FAVICON -->
+<link rel="icon" type="image/png" href="logo.png">
+
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body { 
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%);
+  color: #ecf0f1;
+  padding: 20px;
+  min-height: 100vh;
+  text-align:center;
+}
+
+/* LOADING SCREEN */
+#loading {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  z-index:9999;
+}
+
+#loading img {
+  width:200px;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); opacity:1; }
+  50% { transform: scale(1.05); opacity:0.8; }
+  100% { transform: scale(1); opacity:1; }
+}
+
+.player {
+  background: rgba(15, 52, 96, 0.9);
+  border: 2px solid #00d4ff;
+  border-radius: 12px;
+  padding: 15px;
+  margin: 10px;
+  display:inline-block;
+  width:220px;
+}
+
+.player.dead {
+  opacity: 0.4;
+  border-color: red;
+}
+
+button {
+  padding: 10px 15px;
+  margin: 5px;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+  font-weight:bold;
+  background: #00d4ff;
+  color: #000;
+  transition: all 0.3s;
+}
+
+button:hover {
+  background: #00f0ff;
+  transform: scale(1.05);
+}
+
+button:active {
+  transform: scale(0.95);
+}
+
+#players {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+@media (max-width: 768px) {
+  .player {
+    width: 160px;
+    padding: 10px;
+  }
+
+  .player img {
+    width: 80px !important;
+  }
+
+  button {
+    padding: 8px 12px;
+    margin: 3px;
+    font-size: 0.9em;
+  }
+
+  body {
+    padding: 10px;
+  }
+
+  h2 {
+    font-size: 1.5em;
+  }
+
+  p {
+    font-size: 0.95em;
+  }
+}
+
+@media (max-width: 480px) {
+  .player {
+    width: 140px;
+    padding: 8px;
+  }
+
+  .player img {
+    width: 60px !important;
+  }
+
+  .player {
+    font-size: 0.85em;
+  }
+
+  button {
+    padding: 6px 10px;
+    margin: 2px;
+    font-size: 0.8em;
+  }
+
+  body {
+    padding: 5px;
+  }
+
+  #loading img {
+    width: 120px;
+  }
+
+  img[style*="max-width"] {
+    max-width: 200px !important;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<!-- LOADING -->
+<div id="loading">
+  <img src="logo.png">
+  <h2>Loading Dice War...</h2>
+</div>
+
+<!-- LOGO -->
+<img src="logo.png" style="max-width:300px; margin-bottom:20px;">
+
+<!-- AUDIO -->
+<audio id="bgm" src="Fairy Tail Opening 6 version 2 - FIESTA.mp3" loop></audio>
+<button id="musicBtn" onclick="toggleMusic()">▶ Play Music</button>
+<button onclick="resetGame()">🔄 Reset Game</button>
+
+<hr><br>
+
+<p>Giliran:</p>
+<div id="turnName"></div>
+<p>Dadu: <span id="dice">-</span></p>
+
+<button onclick="rollDice()">🎲 Roll Dice</button>
+<button onclick="endTurn()">➡ End Turn</button>
+
+<div id="players"></div>
+
+<script>
+/* ================= LOADING ================= */
+window.onload = () => {
+  setTimeout(() => {
+    document.getElementById("loading").style.display = "none";
+  }, 2000);
+};
+
+/* ================= MUSIC ================= */
+let musicPlaying = false;
+const bgm = document.getElementById("bgm");
+const musicBtn = document.getElementById("musicBtn");
+
+function toggleMusic(){
+  if(!musicPlaying){
+    bgm.play();
+    musicBtn.innerText = "⏸ Pause Music";
+    musicPlaying = true;
+  } else {
+    bgm.pause();
+    musicBtn.innerText = "▶ Play Music";
+    musicPlaying = false;
+  }
+}
+
+/* ================= GAME ================= */
+const initialPlayers = () => ([
+ {name:"Zombie", img:"zombie.png", hp:50, counter:0, alive:true, revived:false},
+ {name:"Orc", img:"orc.png", hp:50, counter:0, alive:true},
+ {name:"Dragon", img:"dragon.png", hp:50, counter:0, alive:true},
+ {name:"Vampire", img:"vampire.png", hp:50, counter:0, alive:true}
+]);
+
+let players = initialPlayers();
+let turn = 0;
+let dice = 0;
+let attacked = false;
+
+function render(){
+ document.getElementById("turnName").innerHTML =
+   `<img src="${players[turn].img}" style="width:80px;">`;
+
+ document.getElementById("dice").innerText = dice || "-";
+
+ let html = "";
+ players.forEach((p,i)=>{
+  html += `
+  <div class="player ${!p.alive?'dead':''}">
+    <img src="${p.img}" style="width:120px;"><br>
+    ❤️ HP: ${p.hp}<br>
+    🎯 Counter: ${p.counter}<br>
+
+    ${i!==turn && p.alive && dice>0 && !attacked
+      ? `<button onclick="attack(${i})">Attack</button>`:""}
+
+    ${p.name!=="Zombie" && p.counter>0 && i===turn
+      ? `<button onclick="skill()">Use Skill</button>`:""}
+  </div>
+  `;
+ });
+ document.getElementById("players").innerHTML = html;
+}
+
+function rollDice(){
+ if(dice!==0) return;
+ dice = Math.floor(Math.random()*6)+1;
+ if(dice % 2 === 0) players[turn].counter++;
+ render();
+}
+
+function attack(target){
+ if(attacked || dice===0) return;
+ let victim = players[target];
+ victim.hp -= dice;
+
+ if(victim.name==="Zombie" && victim.hp<=0 && !victim.revived && victim.counter>0){
+   victim.alive = true;
+   victim.revived = true;
+   victim.hp = victim.counter * 5;
+ } else if(victim.hp<=0){
+   victim.hp = 0;
+   victim.alive = false;
+ }
+
+ attacked = true;
+ render();
+}
+
+function skill(){
+ let p = players[turn];
+ if(p.counter<=0) return;
+ p.counter--;
+
+ if(p.name==="Orc") dice *= 2;
+
+ if(p.name==="Dragon"){
+   players.forEach((e,i)=>{
+     if(i!==turn && e.alive){
+       e.hp -= dice;
+       if(e.hp<=0){ e.hp=0; e.alive=false; }
+     }
+   });
+ }
+
+ if(p.name==="Vampire"){
+   p.hp = Math.min(50, p.hp + dice);
+ }
+
+ render();
+}
+
+function endTurn(){
+ dice = 0;
+ attacked = false;
+ do { turn = (turn + 1) % players.length; }
+ while(!players[turn].alive);
+ checkWin();
+ render();
+}
+
+function checkWin(){
+ let alive = players.filter(p=>p.alive);
+ if(alive.length===1){
+   alert("🏆 Pemenang: " + alive[0].name);
+ }
+}
+
+/* ================= RESET ================= */
+function resetGame(){
+ players = initialPlayers();
+ turn = 0;
+ dice = 0;
+ attacked = false;
+ render();
+}
+
+render();
+</script>
+
+</body>
+</html>
