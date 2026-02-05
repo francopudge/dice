@@ -215,39 +215,51 @@ let turn = 0;
 let dice = 0;
 let attacked = false;
 
+
+/* ... kode sebelumnya ... */
+
 function render(){
- document.getElementById("turnName").innerHTML =
+  document.getElementById("turnName").innerHTML =
    `<img src="${players[turn].img}" style="width:80px;">`;
 
- document.getElementById("dice").innerText = dice || "-";
+  document.getElementById("dice").innerText = dice || "-";
 
- let html = "";
- players.forEach((p,i)=>{
-  html += `
-  <div class="player ${!p.alive?'dead':''}">
-    <img src="${p.img}" style="width:120px;"><br>
-    ❤️ HP: ${p.hp}<br>
-   <img src="logo.png" style="width:30px; vertical-align:middle;">
-<span>${p.counter}</span><br>
+  let html = "";
+  players.forEach((p,i)=>{
+   // Tambahkan class 'max-counter' jika sudah mencapai 5
+   const counterStyle = p.counter >= 5 ? 'color: #ffcc00; font-weight: bold;' : '';
+   
+   html += `
+   <div class="player ${!p.alive?'dead':''}">
+     <img src="${p.img}" style="width:120px;"><br>
+     ❤️ HP: ${p.hp}<br>
+     <img src="logo.png" style="width:30px; vertical-align:middle;">
+     <span style="${counterStyle}">${p.counter}/5</span><br>
 
+     ${i!==turn && p.alive && dice>0 && !attacked
+       ? `<button onclick="attack(${i})">Attack</button>`:""}
 
-    ${i!==turn && p.alive && dice>0 && !attacked
-      ? `<button onclick="attack(${i})">Attack</button>`:""}
-
-    ${p.name!=="Zombie" && p.counter>0 && i===turn
-      ? `<button onclick="skill()">Use Skill</button>`:""}
-  </div>
-  `;
- });
- document.getElementById("players").innerHTML = html;
+     ${p.name!=="Zombie" && p.counter>0 && i===turn
+       ? `<button onclick="skill()">Use Skill</button>`:""}
+   </div>
+   `;
+  });
+  document.getElementById("players").innerHTML = html;
 }
 
 function rollDice(){
- if(dice!==0) return;
- dice = Math.floor(Math.random()*6)+1;
- if(dice % 2 === 0) players[turn].counter++;
- render();
+  if(dice!==0) return;
+  dice = Math.floor(Math.random()*6)+1;
+  
+  // LOGIKA BARU: Cek jika angka genap DAN counter di bawah 5
+  if(dice % 2 === 0 && players[turn].counter < 5) {
+    players[turn].counter++;
+  }
+  
+  render();
 }
+
+/* ... kode selanjutnya ... */
 
 function attack(target){
  if(attacked || dice===0) return;
